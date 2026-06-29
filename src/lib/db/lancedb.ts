@@ -86,3 +86,14 @@ export async function getStats(): Promise<{ count: number }> {
   const records = await load();
   return { count: records.length };
 }
+
+export type ChunkInfo = {
+  id: string;
+  content: string;
+  source: string;
+};
+
+export async function getAllChunks(): Promise<ChunkInfo[]> {
+  const records = await load();
+  return records.map(({ vector: _unused, ...rest }) => rest);
+}

@@ -32,3 +32,9 @@ RAG 法律文件知识库：
 风险审查详情面板：
 
 ![](./readme_img/risk_dash.png)
+
+知识库向量可视化界面：
+
+![](./readme_img/rag_base1.png)
+![](./readme_img/rag_base2.png)
+![](./readme_img/rag_base3.png)
