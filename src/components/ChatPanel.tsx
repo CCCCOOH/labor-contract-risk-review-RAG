@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "@/lib/types";
 import { MessageSquare, MessageCircle, Send } from "./Icons";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 export default function ChatPanel({
   messages,
@@ -49,17 +50,17 @@ export default function ChatPanel({
                 key={i}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div
-                  className={`max-w-[80%] rounded-xl px-4 py-3 ${
-                    msg.role === "user"
-                      ? "bg-blue-500 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {msg.content}
+                {msg.role === "user" ? (
+                  <div className="max-w-[80%] bg-blue-500 text-white rounded-xl px-4 py-3 shadow-sm">
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                      {msg.content}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="max-w-[85%] bg-gray-100 text-gray-800 rounded-xl px-4 py-3">
+                    <MarkdownRenderer content={msg.content} />
+                  </div>
+                )}
               </div>
             ))}
             {sending && (
