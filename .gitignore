@@ -1,0 +1,6 @@
+node_modules/
+.next/
+.env.local
+data/lance-db/
+data/contracts/
+data/reports/
