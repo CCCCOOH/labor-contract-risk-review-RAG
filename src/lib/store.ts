@@ -1,10 +1,11 @@
-import { Contract, ReviewReport } from "./types";
+import { Contract, ReviewReport, ChatSession } from "./types";
 import fs from "fs/promises";
 import path from "path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CONTRACTS_DIR = path.join(DATA_DIR, "contracts");
 const REPORTS_DIR = path.join(DATA_DIR, "reports");
+ const CHATS_DIR = path.join(DATA_DIR, "chats");
 
 async function ensureDir(dir: string) {
   try {
@@ -79,3 +80,50 @@ export async function getAllContracts(): Promise<Contract[]> {
     return [];
   }
 }
+ 
+ // ── Chat session storage ──
+ 
+ export async function saveChatSession(session: ChatSession): Promise<void> {
+   await ensureDir(CHATS_DIR);
+   const filePath = path.join(CHATS_DIR, `${session.id}.json`);
+   await fs.writeFile(filePath, JSON.stringify(session, null, 2), "utf-8");
+ }
+ 
+ export async function getChatSession(id: string): Promise<ChatSession | null> {
+   try {
+     const filePath = path.join(CHATS_DIR, `${id}.json`);
+     const data = await fs.readFile(filePath, "utf-8");
+     return JSON.parse(data);
+   } catch {
+     return null;
+   }
+ }
+ 
+ export async function getChatSessionsByContract(contractId: string): Promise<ChatSession[]> {
+   await ensureDir(CHATS_DIR);
+   try {
+     const files = await fs.readdir(CHATS_DIR);
+     const sessions: ChatSession[] = [];
+     for (const file of files) {
+       if (file.endsWith(".json")) {
+         const data = await fs.readFile(path.join(CHATS_DIR, file), "utf-8");
+         const session = JSON.parse(data) as ChatSession;
+         if (session.contractId === contractId) sessions.push(session);
+       }
+     }
+     return sessions.sort(
+       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+     );
+   } catch {
+     return [];
+   }
+ }
+ 
+ export async function deleteChatSession(id: string): Promise<void> {
+   try {
+     const filePath = path.join(CHATS_DIR, `${id}.json`);
+     await fs.unlink(filePath);
+   } catch {
+     // ignore if not found
+   }
+ }

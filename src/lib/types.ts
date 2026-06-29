@@ -49,6 +49,16 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
+ 
+ /** 聊天会话 */
+ export interface ChatSession {
+   id: string;
+   contractId: string;
+   title: string;
+   messages: ChatMessage[];
+   createdAt: string;
+   updatedAt: string;
+ }
 
 /** LLM 配置 */
 export interface LLMConfig {

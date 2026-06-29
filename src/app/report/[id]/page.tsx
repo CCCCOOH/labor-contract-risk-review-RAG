@@ -5,6 +5,7 @@ import { ReviewReport, Contract } from "@/lib/types";
 import RiskReport from "@/components/RiskReport";
 import ReviewProgress, { DimensionProgress } from "@/components/ReviewProgress";
 import { REVIEW_DIMENSIONS } from "@/lib/review/dimensions";
+import { ArrowLeft, MessageSquare, FileText } from "@/components/Icons";
 
 const ALL_DIMENSIONS = REVIEW_DIMENSIONS.map((d) => ({
   key: d.key,
@@ -12,10 +13,10 @@ const ALL_DIMENSIONS = REVIEW_DIMENSIONS.map((d) => ({
 }));
 
 function makeInitialProgress(): DimensionProgress[] {
-  return ALL_DIMENSIONS.map((d, i) => ({
+  return ALL_DIMENSIONS.map((d) => ({
     dimensionKey: d.key,
     dimensionName: d.name,
-    status: i === 0 ? ("active" as const) : ("pending" as const),
+    status: "active", // all start in parallel now
     findings: [],
   }));
 }
@@ -72,52 +73,34 @@ export default function ReportPage() {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          if (cancelled) {
-            reader.cancel();
-            return;
-          }
+          if (cancelled) { reader.cancel(); return; }
 
           buf += decoder.decode(value, { stream: true });
 
-          // Process complete SSE frames (separated by \n\n)
           while (buf.includes("\n\n")) {
             const idx = buf.indexOf("\n\n");
             const frame = buf.slice(0, idx);
             buf = buf.slice(idx + 2);
 
-            // Parse lines in this frame
             let eventType = "";
             let eventData: any = null;
             for (const line of frame.split("\n")) {
-              if (line.startsWith("event: ")) {
-                eventType = line.slice(7).trim();
-              } else if (line.startsWith("data: ")) {
-                try {
-                  eventData = JSON.parse(line.slice(6));
-                } catch { /* skip */ }
+              if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+              else if (line.startsWith("data: ")) {
+                try { eventData = JSON.parse(line.slice(6)); } catch { /* skip */ }
               }
             }
 
             if (!eventData) continue;
 
             if (eventType === "progress") {
-              setDims((prev) => {
-                return prev.map((d, i) => {
-                  if (d.dimensionKey === eventData.dimensionKey) {
-                    return {
-                      ...d,
-                      status: eventData.error ? "error" : "done",
-                      findings: eventData.findings || [],
-                      error: eventData.error,
-                    };
-                  }
-                  // The dimension right after the just-completed one becomes active
-                  if (i === eventData.current && d.status === "pending") {
-                    return { ...d, status: "active" };
-                  }
-                  return d;
-                });
-              });
+              setDims((prev) =>
+                prev.map((d) =>
+                  d.dimensionKey === eventData.dimensionKey
+                    ? { ...d, status: eventData.error ? ("error" as const) : ("done" as const), findings: eventData.findings || [], error: eventData.error }
+                    : d
+                )
+              );
               setProgress({ current: eventData.current, total: eventData.total });
             } else if (eventType === "complete") {
               setReport(eventData.report);
@@ -129,11 +112,8 @@ export default function ReportPage() {
           }
         }
 
-        // Stream ended — fetch contract for header
         const cres = await fetch(`/api/review/${id}`);
-        if (!cancelled && cres.ok) {
-          setContract((await cres.json()).contract);
-        }
+        if (!cancelled && cres.ok) setContract((await cres.json()).contract);
         setReviewing(false);
       } catch (e: any) {
         if (e.name === "AbortError") return;
@@ -142,28 +122,28 @@ export default function ReportPage() {
       }
     })();
 
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
+    return () => { cancelled = true; controller.abort(); };
   }, [id]);
 
   if (error) {
-    return <div className="text-center py-20 text-red-500">{error}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-red-500 gap-4">
+        <div className="text-red-400 text-lg font-medium">审查出错</div>
+        <p className="text-sm text-gray-500">{error}</p>
+        <button onClick={() => router.push("/")} className="inline-flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-600 transition-colors">
+          <ArrowLeft size={16} /><span>返回首页</span>
+        </button>
+      </div>
+    );
   }
 
-  // Progress screen — shown during live review
   if (reviewing && !report) {
     return (
       <div>
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">风险审查报告</h1>
         </div>
-        <ReviewProgress
-          dimensions={dims}
-          current={progress.current}
-          total={progress.total}
-        />
+        <ReviewProgress dimensions={dims} current={progress.current} total={progress.total} />
       </div>
     );
   }
@@ -171,28 +151,23 @@ export default function ReportPage() {
   if (!report) return null;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">风险审查报告</h1>
           {contract && (
-            <p className="text-sm text-gray-500 mt-1">
-              {contract.fileName} · {contract.clauses.length} 条条款
+            <p className="text-sm text-gray-500 flex items-center gap-1.5">
+              <FileText size={14} />
+              <span>{contract.fileName} · {contract.clauses.length} 条条款</span>
             </p>
           )}
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => router.push("/")}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-          >
-            ← 返回
+          <button onClick={() => router.push("/")} className="inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl hover:bg-gray-50 transition-colors text-sm">
+            <ArrowLeft size={16} /><span>返回</span>
           </button>
-          <button
-            onClick={() => router.push(`/chat/${id}`)}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            💬 深入对话
+          <button onClick={() => router.push(`/chat/${id}`)} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-sm shadow-sm">
+            <MessageSquare size={16} /><span>深入对话</span>
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Settings } from "./Icons";
+import { FileText, Settings, Clock } from "./Icons";
 
 export default function Navbar() {
   return (
@@ -9,10 +9,16 @@ export default function Navbar() {
           <FileText size={20} />
           <span>合同风险审查</span>
         </Link>
-        <Link href="/admin" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-          <Settings size={16} />
-          <span>知识库管理</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/history" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            <Clock size={16} />
+            <span>历史记录</span>
+          </Link>
+          <Link href="/admin" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            <Settings size={16} />
+            <span>知识库管理</span>
+          </Link>
+        </div>
       </div>
     </nav>
   );
